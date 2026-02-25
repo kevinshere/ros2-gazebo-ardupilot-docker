@@ -1,0 +1,74 @@
+services:
+  ros2:
+    user: dockeruser
+    build:
+      context: docker/ros2
+      dockerfile: Dockerfile_humble
+      args:
+        ros_ws: /home/dockeruser/dev_ws
+        user_id: ${USER_ID:-1000} # run the follow docker compose command if user_id is not unique "USER_ID=$(id -u) docker compose -f ros2-gazebo-ardupilot.yml build"
+    # Standard Bridge Networking (Replaces network_mode: host)
+    networks:
+      - simulation_net
+    # Allows the container to find your Windows Host IP via 'host.docker.internal'. To find your host.docker.internal use the following command in the docker container
+    # python3 -c "import socket; import struct; print(socket.inet_ntoa(struct.pack('<L', int(open('/proc/net/route').readlines()[1].split()[2], 16))))"
+    # or on WSL
+    # docker exec -it <active_container_name> cat /etc/hosts | grep host.docker.internal
+    # From your WSL terminal (not inside the container)
+    # docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' X11-pytorch-25-11
+    # (Replaces network_mode: host)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  
+      
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: all
+    
+    ipc: shareable    
+    shm_size: '8gb' # allocates more shared memory to the container as by default only 64MB is shared. Which is useful for training neural networks
+    # ipc: host allows the container to share the host's memory segment and is a useful command for multi-GPU training or high-performance computing where different processes nee d to talk to each other.
+    # memlock: -1 the way this is at the moment of -1 means the container is to lock its memory meaning it prevents the OS from "swapping" the container's memory  to the hard drive.
+    # stack: 67108864 increases the stack size limit to avoid stack overflow errors.
+    
+    environment:
+      - TERM=xterm-256color
+      - DISPLAY=${DISPLAY}
+      - WAYLAND_DISPLAY=wayland-0
+      - XDG_RUNTIME_DIR=/tmp
+      - PULSE_SERVER
+      - QT_X11_NO_MITSHM=1
+      # Useful for your scripts to know where to send video
+      - WINDOWS_HOST=host.docker.internal
+
+    volumes:
+      - ..:/home/dockeruser/project
+      - ./docker/ros2/.ros:/home/dockeruser/.ros
+      - ./docker/ros2/.gazebo:/home/dockeruser/.gazebo
+
+      # WSLg settings
+      - /mnt/wslg:/mnt/wslg
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}:/tmp/wayland-0:rw # For Wayland
+      
+    # (Replaces network_mode: host) Map the GStreamer port so it's accessible from Windows/WSL
+    ports:
+      - "5600:5600/udp"
+      - "14550:14550/udp" # Mavlink (if using ArduPilot)
+      - "49001:49001/udp" # X-Plane 11
+
+    command: tail -f /dev/null # keeps the container running in the background if no processes is happening without consuming CPU.
+    # The following commands are equvilient to -it and keeps the stream open and allocates a virtual terminal for attaching to the container and run interactive commands.
+    stdin_open: true
+    tty: true
+
+# (Replaces network_mode: host)
+networks:
+  simulation_net:
+      external: true
+      name: shared_network_for_robotics
+    
+    # network_mode: host # bypasses docker's network isolation and uses the host PC's IP and ports directly.
