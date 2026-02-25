@@ -1,5 +1,7 @@
-# Using Humble Desktop Full
-FROM osrf/ros:humble-desktop-full
+# Using Jazzy Desktop Full
+# https://github.com/osrf/docker_images/blob/master/README.md#ros---1
+# https://github.com/osrf/docker_images/blob/master/ros/jazzy/ubuntu/noble/desktop-full/Dockerfile
+FROM osrf/ros:jazzy-desktop-full
 
 ARG user_id
 ARG USER_NAME=dockeruser
@@ -21,7 +23,7 @@ RUN if getent passwd ${user_id}; then \
     && echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USER_NAME} \
     && chmod 0440 /etc/sudoers.d/${USER_NAME}
 
-# Install System & Gazebo Bridge Dependencies
+# Install Dependencies
 RUN apt-get update && apt-get install -y \
     libx11-6 libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
     libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
@@ -29,7 +31,7 @@ RUN apt-get update && apt-get install -y \
     qt6-base-dev libqt6gui6 libqt6widgets6 \
     libglu1-mesa libegl1 libgl1-mesa-dri libglx0 libopengl0 \
     lsb-release sudo tzdata git python3-pip python-is-python3 \
-    default-jre bash-completion nano less xterm wget\
+    openjdk-17-jdk default-jre bash-completion nano less xterm wget\
     # The following is to install gstreamer cli commands which can be used to provide a video feed
     gstreamer1.0-tools \
     gstreamer1.0-plugins-good \
@@ -41,9 +43,11 @@ RUN apt-get update && apt-get install -y \
     libopencv-dev \
     libgstreamer1.0-dev \
     libgstreamer-plugins-base1.0-dev \
-    # ros-humble-ros-gz-* \
+    # for loading a pixbuf
+    librsvg2-common \
+    # ros-jazzy-ros-gz-* \
     && rm -rf /var/lib/apt/lists/*
-# ros-humble-ros-gz-* use this option if you want a generic install instead of source, however, source allows for custom code modification
+# ros-jazzy-ros-gz-* use this option if you want a generic install instead of source, however, source allows for custom code modification
 
 USER ${USER_NAME}
 WORKDIR ${ROS_WS}
@@ -51,7 +55,9 @@ RUN mkdir -p src
 
 # ROS 2 with ArduPilot
 RUN vcs import --recursive --input https://raw.githubusercontent.com/ArduPilot/ardupilot/master/Tools/ros2/ros2.repos src \
-    && sudo apt update \ 
+    && cd src/micro_ros_agent && git switch jazzy
+
+RUN sudo apt update \ 
     && rosdep update \ 
     && . /opt/ros/${ROS_DISTRO}/setup.sh \
     && rosdep install --from-paths src --ignore-src -r -y 
@@ -64,12 +70,11 @@ RUN SKIP_AP_EXT_ENV=0 SKIP_AP_GRAPHIC_ENV=0 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=
     USER=${USER_NAME} \
     ./Tools/environment_install/install-prereqs-ubuntu.sh -y
 
-# Build Micro-XRCE-DDS-Gen
-# USER root
+# Install Micro-XRCE-DDS-Gen for ROS 2
 WORKDIR ${ROS_WS}
 RUN git clone --recurse-submodules https://github.com/ardupilot/Micro-XRCE-DDS-Gen.git \
     && cd Micro-XRCE-DDS-Gen \
-    && ./gradlew assemble 
+    && JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ./gradlew assemble
 
 ENV PATH="${PATH}:${ROS_WS}/Micro-XRCE-DDS-Gen/scripts"
 
@@ -78,8 +83,11 @@ WORKDIR ${ROS_WS}
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
     && colcon build --packages-up-to ardupilot_dds_tests ardupilot_sitl
 
-# Gazebo installation
-RUN vcs import --recursive --input https://raw.githubusercontent.com/ArduPilot/ardupilot_gz/main/ros2_gz.repos src 
+# Getting Repos for Gazebo installation and it's bridge to communiate with ArduPilot and ROS 2
+RUN vcs import --recursive --input https://raw.githubusercontent.com/ArduPilot/ardupilot_gz/main/ros2_gz.repos src \
+    && cd src/micro_ros_agent && git switch jazzy \
+    && cd ../ros_gz && git switch jazzy \
+    && cd ../sdformat_urdf && git switch jazzy
 
 # Install Gazebo Harmonic Plugin Dependencies & Build Plugin for ArduPilot with Gazebo
 USER root
@@ -116,4 +124,5 @@ RUN echo 'alias launch_sitl="ros2 launch ardupilot_sitl sitl_dds_udp.launch.py t
 WORKDIR ${ROS_WS}
 USER ${USER_NAME}
 ENTRYPOINT ["/ros_entrypoint.sh"]
+
 CMD ["sleep", "infinity"]

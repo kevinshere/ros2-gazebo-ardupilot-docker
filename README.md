@@ -1,6 +1,6 @@
 # Docker with ROS 2, Gazebo and ArduPilot
 
-This repo was based on [ryomo's repo](https://github.com/ryomo/ros2-gazebo-docker/tree/main). To include ArduPilot following ArduPilot Installation Guides: [ROS 2](https://ardupilot.org/dev/docs/ros2.html#ros2) and [Gazebo](https://ardupilot.org/dev/docs/ros2-gazebo.html#ros2-gazebo).
+This repo was based on [ryomo's repo](https://github.com/ryomo/ros2-gazebo-docker/tree/main). To include ArduPilot following ArduPilot Installation Guides: [ROS 2](https://ardupilot.org/dev/docs/ros2.html#ros2) and [Gazebo](https://ardupilot.org/dev/docs/ros2-gazebo.html#ros2-gazebo)
 
 # Description 
 - A Docker Container that has ROS 2, Gazebo and ArduPilot.
@@ -8,18 +8,21 @@ This repo was based on [ryomo's repo](https://github.com/ryomo/ros2-gazebo-docke
 - Open ports for UDP that is relavent to MissionPlanner/QGroundControl (14550), GStreamer from Gazebo (5600) and X-Plane (49001)
 - A Network called "shared_network_for_robotics" was made to communicate with another docker container within the same network and can be commented out if you do not require it.
 
-## Note: 
-- If you want to modify the files that were installed via the dockerfiles then modify the ones in ```dev_ws/install```, not in ```dev_ws/src```.
-- change ```..``` on line 48 of ```..:/home/dockeruser/project```within ```{name-of-docker-compose-file}.yml``` to a location of your chosing, currently it is linking to the folder before {this_repository}. This allows for a link between your folder within WSL to the docker container folder located in ```/home/dockeruser/project``` for you to have access to it while not being inside the docker container.
+## Note:
+- If you want to modify the files that were installed via the dockerfiles then modify the ones in dev_ws/install, not in dev_ws/src.
+- Change ```..``` on line 48 of ```..:/home/dockeruser/project```within ```{name-of-docker-compose-file}.yml``` to a location of your chosing, currently it is linking to the folder before {this_repository}. This allows for a link between your folder within WSL to the docker container folder located in ```/home/dockeruser/project``` for you to have access to it while not being inside the docker container.
 
 # Versions
-ROS 2: Humble
+ROS 2: Jazzy
 Gazebo: Harmonic
+
+# Issues
+- [ ] "Warning, time moved backwards. Restarting timer." Appearing after a while when starting a SITL session only within this branch of repo for Jazzy.
 
 # Prerequisites
 - docker, docker-compose
 - (Optional) WSLg
-- VS Code (Optional) **Recommended**
+- VS Code (Optional) **Recommend**
 
 # Building and Creating the Docker Container 
 ```
@@ -114,4 +117,5 @@ docker ps -a
 For creating a network for your docker containers sharing the same network name
 ```
 docker network create {name_of_network}
+
 ```

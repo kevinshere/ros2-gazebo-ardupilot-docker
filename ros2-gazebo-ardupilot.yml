@@ -3,7 +3,7 @@ services:
     user: dockeruser
     build:
       context: docker/ros2
-      dockerfile: Dockerfile_humble
+      dockerfile: Dockerfile
       args:
         ros_ws: /home/dockeruser/dev_ws
         user_id: ${USER_ID:-1000} # run the follow docker compose command if user_id is not unique "USER_ID=$(id -u) docker compose -f ros2-gazebo-ardupilot.yml build"
